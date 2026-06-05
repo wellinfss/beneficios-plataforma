@@ -1,0 +1,10 @@
+{
+  "name": "beneficios-plataforma-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ]
+}
