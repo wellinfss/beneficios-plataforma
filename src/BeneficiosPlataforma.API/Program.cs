@@ -1,4 +1,5 @@
 using BeneficiosPlataforma.API.Middleware;
+using BeneficiosPlataforma.Application.Auth.Commands;
 using BeneficiosPlataforma.Application.Common;
 using BeneficiosPlataforma.Application.Messaging;
 using BeneficiosPlataforma.Domain.Tenants;
@@ -8,6 +9,7 @@ using BeneficiosPlataforma.Infrastructure.Messaging;
 using BeneficiosPlataforma.Infrastructure.MultiTenancy;
 using BeneficiosPlataforma.Infrastructure.Persistence;
 using BeneficiosPlataforma.Infrastructure.Persistence.Interceptors;
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -79,7 +81,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    var permissions = new[]
+    {
+        "beneficiarios:read",
+        "beneficiarios:write",
+        "contratos:read",
+        "contratos:write",
+        "operadoras:read",
+        "operadoras:write",
+        "auditoria:read"
+    };
+
+    foreach (var permission in permissions)
+    {
+        options.AddPolicy(permission, policy =>
+            policy.Requirements.Add(new BeneficiosPlataforma.Infrastructure.Auth.PermissionRequirement(permission)));
+    }
+});
+
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, BeneficiosPlataforma.Infrastructure.Auth.PermissionAuthorizationHandler>();
 
 // MassTransit & RabbitMQ
 var rabbitMqConnection = configuration.GetConnectionString("RabbitMQ")
@@ -105,13 +127,14 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
 });
 
-builder.Services.AddFluentValidation();
+builder.Services.AddValidatorsFromAssembly(typeof(LoginCommand).Assembly);
 
 // Infrastructure Services
 builder.Services.AddScoped<IOutboxRepository, OutboxRepository>();
 builder.Services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
 builder.Services.AddScoped<IEventBus, EventBus>();
 builder.Services.AddScoped<TenantMiddleware>();
+builder.Services.AddScoped<BeneficiosPlataforma.Application.Messaging.INotificationService, BeneficiosPlataforma.Infrastructure.Messaging.EmailNotificationService>();
 
 // Hosted Services
 builder.Services.AddHostedService<OutboxDispatcherWorker>();
@@ -174,25 +197,8 @@ static async Task SeedDefaultDataAsync(AppDbContext context)
         await context.SaveChangesAsync();
     }
 
-    // Seed default roles and permissions
-    var adminRole = await context.Roles
-        .FirstOrDefaultAsync(r => r.Name == "ADMIN");
-
-    if (adminRole == null)
-    {
-        adminRole = new BeneficiosPlataforma.Infrastructure.Persistence.Role
-        {
-            Id = Guid.NewGuid(),
-            TenantId = defaultTenant.Id,
-            Name = "ADMIN"
-        };
-
-        context.Roles.Add(adminRole);
-        await context.SaveChangesAsync();
-    }
-
-    // Seed base permissions
-    var permissions = new[]
+    // Seed base permissions (tenant-independent)
+    var permissionsData = new[]
     {
         ("beneficiarios:read", "Read Beneficiaries"),
         ("beneficiarios:write", "Write Beneficiaries"),
@@ -203,7 +209,8 @@ static async Task SeedDefaultDataAsync(AppDbContext context)
         ("auditoria:read", "Read Audit")
     };
 
-    foreach (var (code, name) in permissions)
+    var permissionIds = new Dictionary<string, Guid>();
+    foreach (var (code, name) in permissionsData)
     {
         var permission = await context.Permissions
             .FirstOrDefaultAsync(p => p.Code == code);
@@ -218,8 +225,62 @@ static async Task SeedDefaultDataAsync(AppDbContext context)
             };
 
             context.Permissions.Add(permission);
+            await context.SaveChangesAsync();
         }
+
+        permissionIds[code] = permission.Id;
     }
 
-    await context.SaveChangesAsync();
+    // Seed default roles for the default tenant (with IgnoreQueryFilters for tenant scope)
+    var roleNames = new[] { "ADMIN", "OPERADOR", "CONSULTOR", "READONLY" };
+
+    foreach (var roleName in roleNames)
+    {
+        var existingRole = await context.Roles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(r => r.Name == roleName && r.TenantId == defaultTenant.Id);
+
+        if (existingRole != null)
+            continue;
+
+        var role = new BeneficiosPlataforma.Infrastructure.Persistence.Role
+        {
+            Id = Guid.NewGuid(),
+            TenantId = defaultTenant.Id,
+            Name = roleName
+        };
+
+        context.Roles.Add(role);
+        await context.SaveChangesAsync();
+
+        // Assign permissions based on role
+        var rolePermissions = roleName switch
+        {
+            "ADMIN" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "operadoras:read", "operadoras:write", "auditoria:read" },
+            "OPERADOR" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write" },
+            "CONSULTOR" => new[] { "beneficiarios:read", "contratos:read" },
+            "READONLY" => new[] { "beneficiarios:read", "contratos:read", "operadoras:read", "auditoria:read" },
+            _ => Array.Empty<string>()
+        };
+
+        foreach (var permCode in rolePermissions)
+        {
+            if (permissionIds.TryGetValue(permCode, out var permId))
+            {
+                var existingRolePermission = await context.RolePermissions
+                    .FirstOrDefaultAsync(rp => rp.RoleId == role.Id && rp.PermissionId == permId);
+
+                if (existingRolePermission == null)
+                {
+                    context.RolePermissions.Add(new BeneficiosPlataforma.Infrastructure.Persistence.RolePermission
+                    {
+                        RoleId = role.Id,
+                        PermissionId = permId
+                    });
+                }
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
 }

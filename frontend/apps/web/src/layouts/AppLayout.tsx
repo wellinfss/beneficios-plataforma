@@ -5,8 +5,8 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 

@@ -13,6 +13,8 @@ public class UserDto
     public string Email { get; set; } = null!;
     public string Name { get; set; } = null!;
     public Guid TenantId { get; set; }
+    public string[] Roles { get; set; } = Array.Empty<string>();
+    public string[] Permissions { get; set; } = Array.Empty<string>();
 }
 
 public class TenantDto

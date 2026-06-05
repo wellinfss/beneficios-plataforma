@@ -5,11 +5,21 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import ForbiddenPage from '@/pages/ForbiddenPage'
 import AppLayout from '@/layouts/AppLayout'
 import DashboardPage from '@/pages/DashboardPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 
 const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />,
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPasswordPage />,
   },
   {
     path: '/',

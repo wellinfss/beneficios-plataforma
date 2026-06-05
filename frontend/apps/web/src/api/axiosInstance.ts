@@ -8,6 +8,11 @@ const axiosInstance = axios.create({
   timeout: 30000,
 })
 
+const bareAxiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: 30000,
+})
+
 axiosInstance.interceptors.request.use(
   (config) => {
     const { accessToken, tenantSlug } = useAuthStore.getState()
@@ -34,9 +39,9 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const { refreshToken } = useAuthStore.getState()
+        const refreshToken = localStorage.getItem('refreshToken')
         if (refreshToken) {
-          const response = await axiosInstance.post('/auth/refresh', {
+          const response = await bareAxiosInstance.post('/auth/refresh', {
             refreshToken,
           })
           const { accessToken } = response.data
@@ -45,7 +50,7 @@ axiosInstance.interceptors.response.use(
           return axiosInstance(originalRequest)
         }
       } catch (refreshError) {
-        useAuthStore.getState().logout()
+        await useAuthStore.getState().logout()
         return Promise.reject(refreshError)
       }
     }

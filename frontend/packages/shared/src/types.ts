@@ -9,6 +9,8 @@ export interface UserDto {
   email: string
   name: string
   tenantId: string
+  roles?: string[]
+  permissions?: string[]
 }
 
 export interface TenantDto {

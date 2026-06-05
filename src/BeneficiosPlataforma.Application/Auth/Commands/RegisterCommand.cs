@@ -8,20 +8,20 @@ using BeneficiosPlataforma.Infrastructure.Auth;
 using BeneficiosPlataforma.Infrastructure.MultiTenancy;
 using Microsoft.EntityFrameworkCore;
 
-public record LoginCommand(string Email, string Password, string TenantSlug)
+public record RegisterCommand(string Name, string Email, string Password, string TenantSlug)
     : IRequest<AuthResponseDto>;
 
-public class LoginCommandHandler(
+public class RegisterCommandHandler(
     AppDbContext dbContext,
     ITenantContext tenantContext,
     IJwtTokenService jwtTokenService,
     IRefreshTokenStore refreshTokenStore,
     IPasswordHasher passwordHasher,
-    ILogger<LoginCommandHandler> logger)
-    : IRequestHandler<LoginCommand, AuthResponseDto>
+    ILogger<RegisterCommandHandler> logger)
+    : IRequestHandler<RegisterCommand, AuthResponseDto>
 {
     public async Task<AuthResponseDto> Handle(
-        LoginCommand request,
+        RegisterCommand request,
         CancellationToken cancellationToken)
     {
         var tenant = await dbContext.Tenants
@@ -42,23 +42,50 @@ public class LoginCommandHandler(
 
         tenantContext.SetTenant(tenant.Id, tenant.Slug);
 
-        var user = await dbContext.Users
+        var existingUser = await dbContext.Users
             .Where(u => u.Email == request.Email)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (user == null || user.Status != "ACTIVE")
+        if (existingUser != null)
         {
-            logger.LogWarning("User not found or inactive: {Email}", request.Email);
-            throw new InvalidOperationException("Invalid credentials");
+            logger.LogWarning("Email already exists: {Email}", request.Email);
+            throw new InvalidOperationException("Email already registered");
         }
 
-        if (!passwordHasher.Verify(request.Password, user.PasswordHash))
+        var passwordHash = passwordHasher.Hash(request.Password);
+
+        var user = new User
         {
-            logger.LogWarning("Invalid password for user: {Email}", request.Email);
-            throw new InvalidOperationException("Invalid credentials");
+            Id = Guid.NewGuid(),
+            TenantId = tenant.Id,
+            Email = request.Email,
+            Name = request.Name,
+            PasswordHash = passwordHash,
+            Status = "ACTIVE"
+        };
+
+        dbContext.Users.Add(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var operatorRole = await dbContext.Roles
+            .FirstOrDefaultAsync(r => r.Name == "OPERADOR" && r.TenantId == tenant.Id, cancellationToken);
+
+        if (operatorRole == null)
+        {
+            logger.LogError("OPERADOR role not found for tenant {TenantId}. Ensure roles are seeded.", tenant.Id);
+            throw new InvalidOperationException("OPERADOR role not configured for tenant");
         }
 
-        var roles = await GetUserRolesAsync(user.Id, cancellationToken);
+        var userRole = new UserRole
+        {
+            UserId = user.Id,
+            RoleId = operatorRole.Id
+        };
+
+        dbContext.UserRoles.Add(userRole);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var roles = new[] { "OPERADOR" };
         var permissions = await GetUserPermissionsAsync(user.Id, cancellationToken);
 
         var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email, tenant.Id, roles, permissions);
@@ -71,7 +98,7 @@ public class LoginCommandHandler(
             TimeSpan.FromDays(7),
             cancellationToken);
 
-        logger.LogInformation("User {Email} logged in for tenant {TenantSlug}",
+        logger.LogInformation("User {Email} registered for tenant {TenantSlug}",
             request.Email, request.TenantSlug);
 
         return new AuthResponseDto
@@ -80,17 +107,6 @@ public class LoginCommandHandler(
             RefreshToken = refreshToken,
             ExpiresIn = 900
         };
-    }
-
-    private async Task<string[]> GetUserRolesAsync(Guid userId, CancellationToken cancellationToken)
-    {
-        return await dbContext.UserRoles
-            .Where(ur => ur.UserId == userId)
-            .Join(dbContext.Roles,
-                ur => ur.RoleId,
-                role => role.Id,
-                (ur, role) => role.Name)
-            .ToArrayAsync(cancellationToken);
     }
 
     private async Task<string[]> GetUserPermissionsAsync(Guid userId, CancellationToken cancellationToken)

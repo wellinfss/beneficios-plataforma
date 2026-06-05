@@ -54,6 +54,38 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: .
+      dockerfile: src/BeneficiosPlataforma.API/Dockerfile
+    container_name: beneficios_api
+    ports:
+      - "5000:5000"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__DefaultConnection: Host=postgres;Database=${POSTGRES_DB:-beneficiostdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres};Port=5432
+      ConnectionStrings__Redis: redis:6379
+      ConnectionStrings__RabbitMQ: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672/
+      JwtSettings__SecretKey: ${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      JwtSettings__Issuer: ${JWT_ISSUER:-beneficios-plataforma}
+      JwtSettings__Audience: ${JWT_AUDIENCE:-beneficios-api}
+      JwtSettings__AccessTokenExpiryMinutes: ${JWT_ACCESS_TOKEN_EXPIRY:-15}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - beneficios_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
   postgres_data:
   rabbitmq_data:

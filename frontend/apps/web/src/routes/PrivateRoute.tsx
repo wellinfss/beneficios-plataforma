@@ -28,10 +28,13 @@ export function PermissionGuard({
 }: PermissionGuardProps) {
   const { user } = useAuthStore()
 
-  // TODO: Check user permissions from token or store
   if (!user) {
     return fallback
   }
 
-  return <>{children}</>
+  if (user.permissions && user.permissions.includes(permission)) {
+    return <>{children}</>
+  }
+
+  return fallback
 }

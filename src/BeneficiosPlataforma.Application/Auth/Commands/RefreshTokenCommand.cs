@@ -65,7 +65,10 @@ public class RefreshTokenCommandHandler(
             throw new InvalidOperationException("Invalid refresh token");
         }
 
-        var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email, tenant.Id);
+        var roles = await GetUserRolesAsync(user.Id, cancellationToken);
+        var permissions = await GetUserPermissionsAsync(user.Id, cancellationToken);
+
+        var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email, tenant.Id, roles, permissions);
 
         logger.LogInformation("Token refreshed for user {UserId}", userId);
 
@@ -74,5 +77,32 @@ public class RefreshTokenCommandHandler(
             AccessToken = accessToken,
             ExpiresIn = 900
         };
+    }
+
+    private async Task<string[]> GetUserRolesAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return await dbContext.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Join(dbContext.Roles,
+                ur => ur.RoleId,
+                role => role.Id,
+                (ur, role) => role.Name)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    private async Task<string[]> GetUserPermissionsAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return await dbContext.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Join(dbContext.RolePermissions,
+                ur => ur.RoleId,
+                rp => rp.RoleId,
+                (ur, rp) => rp.PermissionId)
+            .Join(dbContext.Permissions,
+                permId => permId,
+                perm => perm.Id,
+                (permId, perm) => perm.Code)
+            .Distinct()
+            .ToArrayAsync(cancellationToken);
     }
 }
