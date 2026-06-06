@@ -2,7 +2,9 @@ namespace BeneficiosPlataforma.Infrastructure.Persistence;
 
 using Domain.Common;
 using Domain.Interfaces;
+using Domain.OrganizacaoHierarquica;
 using Domain.Tenants;
+using Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using MultiTenancy;
 
@@ -27,6 +29,9 @@ public class AppDbContext : DbContext
     public DbSet<OutboxMessage> OutboxMessages { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<MasterDataRegistry> MasterDataRegistry { get; set; }
+    public DbSet<GrupoEconomico> GruposEconomicos { get; set; }
+    public DbSet<Estipulante> Estipulantes { get; set; }
+    public DbSet<Subestipulante> Subestipulantes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,14 +46,26 @@ public class AppDbContext : DbContext
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             var tenantProperty = entityType.FindProperty(nameof(ITenantEntity.TenantId));
+            var isDeletedProperty = entityType.FindProperty(nameof(BaseEntity.IsDeleted));
+
             if (tenantProperty != null)
             {
                 var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType);
-                var property = System.Linq.Expressions.Expression.Property(parameter, nameof(ITenantEntity.TenantId));
-                var constant = System.Linq.Expressions.Expression.Constant(_tenantContext.TenantId);
-                var equal = System.Linq.Expressions.Expression.Equal(property, constant);
-                var lambda = System.Linq.Expressions.Expression.Lambda(equal, parameter);
+                var tenantProp = System.Linq.Expressions.Expression.Property(parameter, nameof(ITenantEntity.TenantId));
+                var tenantConstant = System.Linq.Expressions.Expression.Constant(_tenantContext.TenantId);
+                var tenantEqual = System.Linq.Expressions.Expression.Equal(tenantProp, tenantConstant);
 
+                System.Linq.Expressions.Expression finalFilter = tenantEqual;
+
+                if (isDeletedProperty != null)
+                {
+                    var isDeletedProp = System.Linq.Expressions.Expression.Property(parameter, nameof(BaseEntity.IsDeleted));
+                    var isDeletedConstant = System.Linq.Expressions.Expression.Constant(false);
+                    var isDeletedEqual = System.Linq.Expressions.Expression.Equal(isDeletedProp, isDeletedConstant);
+                    finalFilter = System.Linq.Expressions.Expression.AndAlso(tenantEqual, isDeletedEqual);
+                }
+
+                var lambda = System.Linq.Expressions.Expression.Lambda(finalFilter, parameter);
                 modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
         }
@@ -131,6 +148,75 @@ public class AppDbContext : DbContext
             b.Property(x => x.MdmStatus).IsRequired().HasMaxLength(50);
             b.HasIndex(x => x.GlobalId);
             b.HasIndex(x => new { x.TenantId, x.LocalId });
+        });
+
+        modelBuilder.Entity<GrupoEconomico>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.Nome).IsRequired().HasMaxLength(255);
+            b.Property(x => x.Responsavel).IsRequired().HasMaxLength(255);
+            b.Property(x => x.Status).IsRequired().HasMaxLength(50);
+            b.Property(x => x.IsDeleted).IsRequired();
+            b.OwnsOne(x => x.CnpjRaiz, cnpj =>
+            {
+                cnpj.Property(c => c.Value).HasMaxLength(8).HasColumnName("CnpjRaiz");
+            });
+            b.HasIndex(x => new { x.TenantId, x.IsDeleted });
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.CnpjRaiz }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
+
+        modelBuilder.Entity<Estipulante>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.RazaoSocial).IsRequired().HasMaxLength(255);
+            b.Property(x => x.NomeFantasia).HasMaxLength(255);
+            b.Property(x => x.GrupoEconomicoId);
+            b.Property(x => x.Status).IsRequired().HasMaxLength(50);
+            b.Property(x => x.IsDeleted).IsRequired();
+            b.OwnsOne(x => x.Cnpj, cnpj =>
+            {
+                cnpj.Property(c => c.Value).HasMaxLength(14).HasColumnName("Cnpj");
+            });
+            b.OwnsOne(x => x.Endereco);
+            b.OwnsOne(x => x.Telefone);
+            b.OwnsOne(x => x.Email);
+            b.HasOne<GrupoEconomico>()
+                .WithMany()
+                .HasForeignKey(x => x.GrupoEconomicoId)
+                .OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(x => new { x.TenantId, x.IsDeleted });
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.GrupoEconomicoId });
+            b.HasIndex(x => new { x.TenantId, x.Cnpj }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
+
+        modelBuilder.Entity<Subestipulante>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.RazaoSocial).IsRequired().HasMaxLength(255);
+            b.Property(x => x.NomeFantasia).HasMaxLength(255);
+            b.Property(x => x.EstipulanteId).IsRequired();
+            b.Property(x => x.Status).IsRequired().HasMaxLength(50);
+            b.Property(x => x.IsDeleted).IsRequired();
+            b.OwnsOne(x => x.Cnpj, cnpj =>
+            {
+                cnpj.Property(c => c.Value).HasMaxLength(14).HasColumnName("Cnpj");
+            });
+            b.OwnsOne(x => x.Endereco);
+            b.OwnsOne(x => x.Telefone);
+            b.OwnsOne(x => x.Email);
+            b.HasOne<Estipulante>()
+                .WithMany()
+                .HasForeignKey(x => x.EstipulanteId)
+                .OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(x => new { x.TenantId, x.IsDeleted });
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.EstipulanteId });
+            b.HasIndex(x => new { x.TenantId, x.Cnpj }).IsUnique().HasFilter("\"IsDeleted\" = false");
         });
     }
 

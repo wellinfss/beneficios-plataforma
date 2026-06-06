@@ -2,11 +2,13 @@ using BeneficiosPlataforma.API.Middleware;
 using BeneficiosPlataforma.Application.Auth.Commands;
 using BeneficiosPlataforma.Application.Common;
 using BeneficiosPlataforma.Application.Messaging;
+using BeneficiosPlataforma.Domain.OrganizacaoHierarquica;
 using BeneficiosPlataforma.Domain.Tenants;
 using BeneficiosPlataforma.Infrastructure.Auth;
 using BeneficiosPlataforma.Infrastructure.Cache;
 using BeneficiosPlataforma.Infrastructure.Messaging;
 using BeneficiosPlataforma.Infrastructure.MultiTenancy;
+using BeneficiosPlataforma.Infrastructure.OrganizacaoHierarquica;
 using BeneficiosPlataforma.Infrastructure.Persistence;
 using BeneficiosPlataforma.Infrastructure.Persistence.Interceptors;
 using FluentValidation;
@@ -91,7 +93,13 @@ builder.Services.AddAuthorization(options =>
         "contratos:write",
         "operadoras:read",
         "operadoras:write",
-        "auditoria:read"
+        "auditoria:read",
+        "grupos-economicos:read",
+        "grupos-economicos:write",
+        "estipulantes:read",
+        "estipulantes:write",
+        "subestipulantes:read",
+        "subestipulantes:write"
     };
 
     foreach (var permission in permissions)
@@ -135,6 +143,11 @@ builder.Services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
 builder.Services.AddScoped<IEventBus, EventBus>();
 builder.Services.AddScoped<TenantMiddleware>();
 builder.Services.AddScoped<BeneficiosPlataforma.Application.Messaging.INotificationService, BeneficiosPlataforma.Infrastructure.Messaging.EmailNotificationService>();
+
+// OrganizacaoHierarquica Repositories
+builder.Services.AddScoped<IGrupoEconomicoRepository, GrupoEconomicoRepository>();
+builder.Services.AddScoped<IEstipulanteRepository, EstipulanteRepository>();
+builder.Services.AddScoped<ISubestipulanteRepository, SubestipulanteRepository>();
 
 // Hosted Services
 builder.Services.AddHostedService<OutboxDispatcherWorker>();
@@ -206,7 +219,13 @@ static async Task SeedDefaultDataAsync(AppDbContext context)
         ("contratos:write", "Write Contracts"),
         ("operadoras:read", "Read Operators"),
         ("operadoras:write", "Write Operators"),
-        ("auditoria:read", "Read Audit")
+        ("auditoria:read", "Read Audit"),
+        ("grupos-economicos:read", "Read Economic Groups"),
+        ("grupos-economicos:write", "Write Economic Groups"),
+        ("estipulantes:read", "Read Stipulants"),
+        ("estipulantes:write", "Write Stipulants"),
+        ("subestipulantes:read", "Read Sub-Stipulants"),
+        ("subestipulantes:write", "Write Sub-Stipulants")
     };
 
     var permissionIds = new Dictionary<string, Guid>();
@@ -256,10 +275,10 @@ static async Task SeedDefaultDataAsync(AppDbContext context)
         // Assign permissions based on role
         var rolePermissions = roleName switch
         {
-            "ADMIN" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "operadoras:read", "operadoras:write", "auditoria:read" },
-            "OPERADOR" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write" },
-            "CONSULTOR" => new[] { "beneficiarios:read", "contratos:read" },
-            "READONLY" => new[] { "beneficiarios:read", "contratos:read", "operadoras:read", "auditoria:read" },
+            "ADMIN" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "operadoras:read", "operadoras:write", "auditoria:read", "grupos-economicos:read", "grupos-economicos:write", "estipulantes:read", "estipulantes:write", "subestipulantes:read", "subestipulantes:write" },
+            "OPERADOR" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "grupos-economicos:read", "grupos-economicos:write", "estipulantes:read", "estipulantes:write", "subestipulantes:read", "subestipulantes:write" },
+            "CONSULTOR" => new[] { "beneficiarios:read", "contratos:read", "grupos-economicos:read", "estipulantes:read", "subestipulantes:read" },
+            "READONLY" => new[] { "beneficiarios:read", "contratos:read", "operadoras:read", "auditoria:read", "grupos-economicos:read", "estipulantes:read", "subestipulantes:read" },
             _ => Array.Empty<string>()
         };
 

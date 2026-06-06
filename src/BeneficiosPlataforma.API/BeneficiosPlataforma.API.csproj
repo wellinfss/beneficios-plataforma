@@ -14,8 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../BeneficiosPlataforma.Domain/BeneficiosPlataforma.Domain.csproj" />
-    <ProjectReference Include="../BeneficiosPlataforma.Application/BeneficiosPlataforma.Application.csproj" />
-    <ProjectReference Include="../BeneficiosPlataforma.Infrastructure/BeneficiosPlataforma.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

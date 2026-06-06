@@ -28,6 +28,9 @@ export default function AppLayout() {
               <a href="/contratos">Contratos</a>
             </li>
             <li>
+              <a href="/organizacao/grupos-economicos">Organização</a>
+            </li>
+            <li>
               <a href="/operadoras">Operadoras</a>
             </li>
             <li>

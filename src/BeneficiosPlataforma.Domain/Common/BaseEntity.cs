@@ -15,4 +15,10 @@ public abstract class BaseEntity
     {
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public virtual void SoftDelete()
+    {
+        IsDeleted = true;
+        UpdateTimestamp();
+    }
 }
