@@ -1,5 +1,6 @@
 namespace BeneficiosPlataforma.Infrastructure.Persistence;
 
+using Domain.Catalogo;
 using Domain.Common;
 using Domain.Interfaces;
 using Domain.OrganizacaoHierarquica;
@@ -32,6 +33,9 @@ public class AppDbContext : DbContext
     public DbSet<GrupoEconomico> GruposEconomicos { get; set; }
     public DbSet<Estipulante> Estipulantes { get; set; }
     public DbSet<Subestipulante> Subestipulantes { get; set; }
+    public DbSet<Operadora> Operadoras { get; set; }
+    public DbSet<Produto> Produtos { get; set; }
+    public DbSet<Plano> Planos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -217,6 +221,72 @@ public class AppDbContext : DbContext
             b.HasIndex(x => new { x.TenantId, x.Status });
             b.HasIndex(x => new { x.TenantId, x.EstipulanteId });
             b.HasIndex(x => new { x.TenantId, x.Cnpj }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
+
+        modelBuilder.Entity<Operadora>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.RazaoSocial).IsRequired().HasMaxLength(255);
+            b.Property(x => x.Tipo).IsRequired().HasMaxLength(50);
+            b.Property(x => x.Status).IsRequired().HasMaxLength(50);
+            b.Property(x => x.EndpointIntegracao).HasMaxLength(500);
+            b.Property(x => x.FormatoIntegracao).HasMaxLength(100);
+            b.Property(x => x.IsDeleted).IsRequired();
+            b.OwnsOne(x => x.Cnpj, cnpj =>
+            {
+                cnpj.Property(c => c.Value).HasMaxLength(14).HasColumnName("Cnpj");
+            });
+            b.OwnsOne(x => x.RegistroAns, registroAns =>
+            {
+                registroAns.Property(c => c.Value).HasMaxLength(6).HasColumnName("RegistroAns");
+            });
+            b.HasIndex(x => new { x.TenantId, x.IsDeleted });
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.Cnpj }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
+
+        modelBuilder.Entity<Produto>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.Nome).IsRequired().HasMaxLength(255);
+            b.Property(x => x.OperadoraId).IsRequired();
+            b.Property(x => x.TipoBeneficio).IsRequired().HasMaxLength(50);
+            b.Property(x => x.Modalidade).IsRequired().HasMaxLength(50);
+            b.Property(x => x.RegistroAnsProduto).HasMaxLength(20);
+            b.Property(x => x.Status).IsRequired().HasMaxLength(50);
+            b.Property(x => x.IsDeleted).IsRequired();
+            b.HasOne<Operadora>()
+                .WithMany()
+                .HasForeignKey(x => x.OperadoraId)
+                .OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(x => new { x.TenantId, x.IsDeleted });
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.OperadoraId });
+            b.HasIndex(x => new { x.TenantId, x.OperadoraId, x.Nome }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        });
+
+        modelBuilder.Entity<Plano>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.TenantId).IsRequired();
+            b.Property(x => x.Nome).IsRequired().HasMaxLength(255);
+            b.Property(x => x.ProdutoId).IsRequired();
+            b.Property(x => x.Cobertura).HasMaxLength(255);
+            b.Property(x => x.AbrangenciaGeografica).HasMaxLength(255);
+            b.Property(x => x.TipoAcomodacao).HasMaxLength(50);
+            b.Property(x => x.ValorReferencia).HasColumnType("numeric(10,2)");
+            b.Property(x => x.Status).IsRequired().HasMaxLength(50);
+            b.Property(x => x.IsDeleted).IsRequired();
+            b.HasOne<Produto>()
+                .WithMany()
+                .HasForeignKey(x => x.ProdutoId)
+                .OnDelete(DeleteBehavior.Restrict);
+            b.HasIndex(x => new { x.TenantId, x.IsDeleted });
+            b.HasIndex(x => new { x.TenantId, x.Status });
+            b.HasIndex(x => new { x.TenantId, x.ProdutoId });
+            b.HasIndex(x => new { x.TenantId, x.ProdutoId, x.Nome }).IsUnique().HasFilter("\"IsDeleted\" = false");
         });
     }
 

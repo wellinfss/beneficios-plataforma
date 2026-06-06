@@ -316,6 +316,222 @@ namespace BeneficiosPlataforma.Infrastructure.Migrations
                     b.ToTable("Tenants");
                 });
 
+            modelBuilder.Entity("BeneficiosPlataforma.Domain.Catalogo.Operadora", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CredenciaisEncriptadas")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EndpointIntegracao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("FormatoIntegracao")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RazaoSocial")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Cnpj")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("Operadoras");
+
+                    b.OwnsOne("BeneficiosPlataforma.Domain.ValueObjects.Cnpj", "Cnpj", b1 =>
+                        {
+                            b1.Property<Guid>("OperadoraId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(14)
+                                .HasColumnName("Cnpj")
+                                .HasColumnType("character varying(14)");
+
+                            b1.HasKey("OperadoraId");
+
+                            b1.ToTable("Operadoras");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OperadoraId");
+                        });
+
+                    b.OwnsOne("BeneficiosPlataforma.Domain.ValueObjects.RegistroAns", "RegistroAns", b1 =>
+                        {
+                            b1.Property<Guid>("OperadoraId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Value")
+                                .IsRequired()
+                                .HasMaxLength(6)
+                                .HasColumnName("RegistroAns")
+                                .HasColumnType("character varying(6)");
+
+                            b1.HasKey("OperadoraId");
+
+                            b1.ToTable("Operadoras");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OperadoraId");
+                        });
+                });
+
+            modelBuilder.Entity("BeneficiosPlataforma.Domain.Catalogo.Produto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Modalidade")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("OperadoraId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RegistroAnsProduto")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TipoBeneficio")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "OperadoraId");
+
+                    b.HasIndex("TenantId", "OperadoraId", "Nome")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("Produtos");
+                });
+
+            modelBuilder.Entity("BeneficiosPlataforma.Domain.Catalogo.Plano", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AbrangenciaGeografica")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Cobertura")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("ProdutoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TipoAcomodacao")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal?>("ValorReferencia")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "IsDeleted");
+
+                    b.HasIndex("TenantId", "ProdutoId");
+
+                    b.HasIndex("TenantId", "ProdutoId", "Nome")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("Planos");
+                });
+
             modelBuilder.Entity("BeneficiosPlataforma.Infrastructure.Persistence.RolePermission", b =>
                 {
                     b.HasOne("BeneficiosPlataforma.Infrastructure.Persistence.Permission", null)
@@ -343,6 +559,24 @@ namespace BeneficiosPlataforma.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BeneficiosPlataforma.Domain.Catalogo.Produto", b =>
+                {
+                    b.HasOne("BeneficiosPlataforma.Domain.Catalogo.Operadora", null)
+                        .WithMany()
+                        .HasForeignKey("OperadoraId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("BeneficiosPlataforma.Domain.Catalogo.Plano", b =>
+                {
+                    b.HasOne("BeneficiosPlataforma.Domain.Catalogo.Produto", null)
+                        .WithMany()
+                        .HasForeignKey("ProdutoId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

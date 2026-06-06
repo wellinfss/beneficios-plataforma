@@ -171,8 +171,3 @@ public class AtualizarGrupoEconomicoRequest
     public string Nome { get; set; } = null!;
     public string Responsavel { get; set; } = null!;
 }
-
-public class AlterarStatusRequest
-{
-    public string Status { get; set; } = null!;
-}

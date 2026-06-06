@@ -31,7 +31,12 @@ export default function AppLayout() {
               <a href="/organizacao/grupos-economicos">Organização</a>
             </li>
             <li>
-              <a href="/operadoras">Operadoras</a>
+              <span>Catálogo</span>
+              <ul className="sidebar-submenu">
+                <li><a href="/catalogo/operadoras">Operadoras</a></li>
+                <li><a href="/catalogo/produtos">Produtos</a></li>
+                <li><a href="/catalogo/planos">Planos</a></li>
+              </ul>
             </li>
             <li>
               <a href="/auditoria">Auditoria</a>

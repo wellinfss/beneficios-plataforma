@@ -2,15 +2,18 @@ using BeneficiosPlataforma.API.Middleware;
 using BeneficiosPlataforma.Application.Auth.Commands;
 using BeneficiosPlataforma.Application.Common;
 using BeneficiosPlataforma.Application.Messaging;
+using BeneficiosPlataforma.Domain.Catalogo;
 using BeneficiosPlataforma.Domain.OrganizacaoHierarquica;
 using BeneficiosPlataforma.Domain.Tenants;
 using BeneficiosPlataforma.Infrastructure.Auth;
 using BeneficiosPlataforma.Infrastructure.Cache;
+using BeneficiosPlataforma.Infrastructure.Catalogo;
 using BeneficiosPlataforma.Infrastructure.Messaging;
 using BeneficiosPlataforma.Infrastructure.MultiTenancy;
 using BeneficiosPlataforma.Infrastructure.OrganizacaoHierarquica;
 using BeneficiosPlataforma.Infrastructure.Persistence;
 using BeneficiosPlataforma.Infrastructure.Persistence.Interceptors;
+using BeneficiosPlataforma.Infrastructure.Security;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -99,7 +102,11 @@ builder.Services.AddAuthorization(options =>
         "estipulantes:read",
         "estipulantes:write",
         "subestipulantes:read",
-        "subestipulantes:write"
+        "subestipulantes:write",
+        "produtos:read",
+        "produtos:write",
+        "planos:read",
+        "planos:write"
     };
 
     foreach (var permission in permissions)
@@ -148,6 +155,14 @@ builder.Services.AddScoped<BeneficiosPlataforma.Application.Messaging.INotificat
 builder.Services.AddScoped<IGrupoEconomicoRepository, GrupoEconomicoRepository>();
 builder.Services.AddScoped<IEstipulanteRepository, EstipulanteRepository>();
 builder.Services.AddScoped<ISubestipulanteRepository, SubestipulanteRepository>();
+
+// Catalogo Repositories
+builder.Services.AddScoped<IOperadoraRepository, OperadoraRepository>();
+builder.Services.AddScoped<IProdutoRepository, ProdutoRepository>();
+builder.Services.AddScoped<IPlanoRepository, PlanoRepository>();
+
+// Encryption Service
+builder.Services.AddScoped<IEncryptionService, AesEncryptionService>();
 
 // Hosted Services
 builder.Services.AddHostedService<OutboxDispatcherWorker>();
@@ -225,7 +240,11 @@ static async Task SeedDefaultDataAsync(AppDbContext context)
         ("estipulantes:read", "Read Stipulants"),
         ("estipulantes:write", "Write Stipulants"),
         ("subestipulantes:read", "Read Sub-Stipulants"),
-        ("subestipulantes:write", "Write Sub-Stipulants")
+        ("subestipulantes:write", "Write Sub-Stipulants"),
+        ("produtos:read", "Read Products"),
+        ("produtos:write", "Write Products"),
+        ("planos:read", "Read Plans"),
+        ("planos:write", "Write Plans")
     };
 
     var permissionIds = new Dictionary<string, Guid>();
@@ -275,10 +294,10 @@ static async Task SeedDefaultDataAsync(AppDbContext context)
         // Assign permissions based on role
         var rolePermissions = roleName switch
         {
-            "ADMIN" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "operadoras:read", "operadoras:write", "auditoria:read", "grupos-economicos:read", "grupos-economicos:write", "estipulantes:read", "estipulantes:write", "subestipulantes:read", "subestipulantes:write" },
-            "OPERADOR" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "grupos-economicos:read", "grupos-economicos:write", "estipulantes:read", "estipulantes:write", "subestipulantes:read", "subestipulantes:write" },
-            "CONSULTOR" => new[] { "beneficiarios:read", "contratos:read", "grupos-economicos:read", "estipulantes:read", "subestipulantes:read" },
-            "READONLY" => new[] { "beneficiarios:read", "contratos:read", "operadoras:read", "auditoria:read", "grupos-economicos:read", "estipulantes:read", "subestipulantes:read" },
+            "ADMIN" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "operadoras:read", "operadoras:write", "auditoria:read", "grupos-economicos:read", "grupos-economicos:write", "estipulantes:read", "estipulantes:write", "subestipulantes:read", "subestipulantes:write", "produtos:read", "produtos:write", "planos:read", "planos:write" },
+            "OPERADOR" => new[] { "beneficiarios:read", "beneficiarios:write", "contratos:read", "contratos:write", "operadoras:read", "grupos-economicos:read", "grupos-economicos:write", "estipulantes:read", "estipulantes:write", "subestipulantes:read", "subestipulantes:write", "produtos:read", "produtos:write", "planos:read", "planos:write" },
+            "CONSULTOR" => new[] { "beneficiarios:read", "contratos:read", "operadoras:read", "grupos-economicos:read", "estipulantes:read", "subestipulantes:read", "produtos:read", "planos:read" },
+            "READONLY" => new[] { "beneficiarios:read", "contratos:read", "operadoras:read", "auditoria:read", "grupos-economicos:read", "estipulantes:read", "subestipulantes:read", "produtos:read", "planos:read" },
             _ => Array.Empty<string>()
         };
 

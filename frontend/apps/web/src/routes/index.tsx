@@ -14,6 +14,14 @@ import { EstipulanteFormPage } from '@/pages/organizacao/EstipulanteFormPage'
 import { EstipulanteDetailPage } from '@/pages/organizacao/EstipulanteDetailPage'
 import { SubestipulantesPage } from '@/pages/organizacao/SubestipulantesPage'
 import { SubestipulanteFormPage } from '@/pages/organizacao/SubestipulanteFormPage'
+import { OperadorasPage } from '@/pages/catalogo/OperadorasPage'
+import { OperadoraFormPage } from '@/pages/catalogo/OperadoraFormPage'
+import { OperadoraDetailPage } from '@/pages/catalogo/OperadoraDetailPage'
+import { ProdutosPage } from '@/pages/catalogo/ProdutosPage'
+import { ProdutoFormPage } from '@/pages/catalogo/ProdutoFormPage'
+import { ProdutoDetailPage } from '@/pages/catalogo/ProdutoDetailPage'
+import { PlanosPage } from '@/pages/catalogo/PlanosPage'
+import { PlanoFormPage } from '@/pages/catalogo/PlanoFormPage'
 
 const router = createBrowserRouter([
   {
@@ -83,6 +91,50 @@ const router = createBrowserRouter([
       {
         path: 'organizacao/subestipulantes/:id/editar',
         element: <SubestipulanteFormPage />,
+      },
+      {
+        path: 'catalogo/operadoras',
+        element: <OperadorasPage />,
+      },
+      {
+        path: 'catalogo/operadoras/novo',
+        element: <OperadoraFormPage />,
+      },
+      {
+        path: 'catalogo/operadoras/:id',
+        element: <OperadoraDetailPage />,
+      },
+      {
+        path: 'catalogo/operadoras/:id/editar',
+        element: <OperadoraFormPage />,
+      },
+      {
+        path: 'catalogo/produtos',
+        element: <ProdutosPage />,
+      },
+      {
+        path: 'catalogo/produtos/novo',
+        element: <ProdutoFormPage />,
+      },
+      {
+        path: 'catalogo/produtos/:id',
+        element: <ProdutoDetailPage />,
+      },
+      {
+        path: 'catalogo/produtos/:id/editar',
+        element: <ProdutoFormPage />,
+      },
+      {
+        path: 'catalogo/planos',
+        element: <PlanosPage />,
+      },
+      {
+        path: 'catalogo/planos/novo',
+        element: <PlanoFormPage />,
+      },
+      {
+        path: 'catalogo/planos/:id/editar',
+        element: <PlanoFormPage />,
       },
     ],
   },
